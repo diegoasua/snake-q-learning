@@ -1,6 +1,13 @@
 import numpy as np
 import random
 from collections import deque
+import pickle
+import pygame
+import time
+from datetime import datetime
+import os
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import figure
 
 class SnakeGame:
     def __init__(self, width=10, height=10):
@@ -119,6 +126,22 @@ class SnakeGame:
             len(self.snake) / (self.width * self.height)
         ]
         return np.array(state, dtype=float)
+    
+    def render(self, screen):
+        """New method to render the game state"""
+        # Clear screen
+        screen.fill((0, 0, 0))
+        
+        # Draw food
+        pygame.draw.rect(screen, (255, 0, 0), 
+                        (self.food[1]*20, self.food[0]*20, 20, 20))
+        
+        # Draw snake
+        for segment in self.snake:
+            pygame.draw.rect(screen, (0, 255, 0),
+                           (segment[1]*20, segment[0]*20, 20, 20))
+            
+        pygame.display.flip()
 
 class QLearningAgent:
     def __init__(self, state_size, action_size):
@@ -177,6 +200,47 @@ class QLearningAgent:
         
         self.q_table[state_key][action] = new_value
 
+    def save(self, filename):
+        """Save the Q-table and agent parameters"""
+        save_data = {
+            'q_table': self.q_table,
+            'epsilon': self.epsilon,
+            'learning_rate': self.learning_rate
+        }
+        with open(filename, 'wb') as f:
+            pickle.dump(save_data, f)
+    
+    def load(self, filename):
+        """Load a saved Q-table and agent parameters"""
+        with open(filename, 'rb') as f:
+            save_data = pickle.load(f)
+        self.q_table = save_data['q_table']
+        self.epsilon = save_data['epsilon']
+        self.learning_rate = save_data['learning_rate']
+
+def visualize_agent(agent, env, speed=5):  # Reduced default speed from 100 to 5
+    """Visualize the agent playing"""
+    pygame.init()
+    screen = pygame.display.set_mode((env.width * 20, env.height * 20))
+    pygame.display.set_caption('Snake AI')
+    
+    state = env.reset()
+    done = False
+    
+    while not done:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+        
+        action = agent.act(state)
+        state, _, done = env.step(action)
+        env.render(screen)
+        time.sleep(1/speed)  # Now 0.2 seconds per move at default speed
+    
+    pygame.quit()
+    
+
 def train_model(episodes=10000):
     env = SnakeGame()
     state_size = 29  # Updated state size
@@ -185,6 +249,11 @@ def train_model(episodes=10000):
     
     scores = []
     best_score = 0
+    checkpoint_interval = 1000  # Save every 1000 episodes
+
+    # Create directory for checkpoints
+    checkpoint_dir = f"checkpoints_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    os.makedirs(checkpoint_dir, exist_ok=True)
     
     for episode in range(episodes):
         state = env.reset()
@@ -201,14 +270,62 @@ def train_model(episodes=10000):
                 scores.append(env.score)
                 if env.score > best_score:
                     best_score = env.score
+                    # Save best model
+                    agent.save(f"{checkpoint_dir}/best_model.pkl")
                 if episode % 100 == 0:
                     avg_score = np.mean(scores[-100:])
                     print(f"Episode: {episode}, Average Score: {avg_score:.2f}, "
                           f"Best Score: {best_score}, Epsilon: {agent.epsilon:.2f}, "
                           f"Learning Rate: {agent.learning_rate:.3f}")
+                    
+                # Save checkpoint
+                if episode % checkpoint_interval == 0:
+                    agent.save(f"{checkpoint_dir}/checkpoint_{episode}.pkl")
                 break
     
     return agent, scores
 
 if __name__ == "__main__":
+    # Train the model
     trained_agent, training_scores = train_model()
+    
+    # Plot learning curve
+    figure(figsize=(10, 6))
+    plt.plot(training_scores)
+    plt.title('Learning Curve')
+    plt.xlabel('Episode')
+    plt.ylabel('Score')
+    
+    # Add moving average
+    window_size = 100
+    moving_avg = np.convolve(training_scores, np.ones(window_size)/window_size, mode='valid')
+    plt.plot(range(window_size-1, len(training_scores)), moving_avg, 'r', label=f'{window_size}-episode moving average')
+    
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('learning_curve.png')
+    plt.show()
+    
+    # Save the final model
+    trained_agent.save("final_model.pkl")
+    
+    # Find and visualize different checkpoints
+    import glob
+    checkpoint_dirs = glob.glob("checkpoints_*")
+    if checkpoint_dirs:
+        latest_dir = max(checkpoint_dirs)
+        checkpoints = sorted(glob.glob(f"{latest_dir}/checkpoint_*.pkl"))
+        
+        for checkpoint in checkpoints:
+            print(f"Visualizing {checkpoint}")
+            env = SnakeGame()
+            agent = QLearningAgent(29, 3)
+            agent.load(checkpoint)
+            visualize_agent(agent, env)  # Using slower default speed
+        
+        # Visualize the best model
+        print("Visualizing best model")
+        env = SnakeGame()
+        agent = QLearningAgent(29, 3)
+        agent.load(f"{latest_dir}/best_model.pkl")
+        visualize_agent(agent, env)  # Using slower default speed
