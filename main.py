@@ -149,13 +149,13 @@ class QLearningAgent:
         self.action_size = action_size
         self.q_table = {}
         self.epsilon = 1.0
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.9998
-        self.learning_rate = 0.1
-        self.learning_rate_decay = 0.99995
-        self.gamma = 0.99
+        self.epsilon_min = 0.001593721112625894
+        self.epsilon_decay = 0.9962050178281874
+        self.learning_rate = 0.4525171577269225
+        self.learning_rate_decay = 0.9996387403565626
+        self.gamma = 0.9634379410341871
         self.memory = deque(maxlen=20000)
-        self.batch_size = 64
+        self.batch_size = 188
     
     def get_state_key(self, state):
         # Discretize continuous values
