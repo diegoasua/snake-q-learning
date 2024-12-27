@@ -1,6 +1,6 @@
 import optuna
 import numpy as np
-from main import SnakeGame, QLearningAgent
+from qlearning import SnakeGame, QLearningAgent
 import matplotlib.pyplot as plt
 from datetime import datetime
 import os

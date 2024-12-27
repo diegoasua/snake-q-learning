@@ -91,41 +91,20 @@ class SnakeGame:
         return False
 
     def _get_state(self):
+        state = np.zeros((self.height, self.width))
+        
+        # Place snake body (0.5)
+        for segment in list(self.snake)[1:]:
+            state[segment[0]][segment[1]] = 0.5
+        
+        # Place snake head (1.0)
         head = self.snake[0]
+        state[head[0]][head[1]] = 1.0
         
-        # Calculate relative positions of body parts
-        body_positions = set()
-        for i in range(1, min(4, len(self.snake))):  # Consider up to 3 body segments
-            rel_pos = (self.snake[i][0] - head[0], 
-                      self.snake[i][1] - head[1])
-            body_positions.add(rel_pos)
+        # Place food (0.25)
+        state[self.food[0]][self.food[1]] = 0.25
         
-        state = [
-            # Danger in 8 directions (N, NE, E, SE, S, SW, W, NW)
-            *[self._is_danger((dx, dy)) for dx, dy in [
-                (-1, 0), (-1, 1), (0, 1), (1, 1),
-                (1, 0), (1, -1), (0, -1), (-1, -1)]],
-            
-            # Food direction (8 directions)
-            self.food[0] < head[0],  # N
-            self.food[0] < head[0] and self.food[1] > head[1],  # NE
-            self.food[1] > head[1],  # E
-            self.food[0] > head[0] and self.food[1] > head[1],  # SE
-            self.food[0] > head[0],  # S
-            self.food[0] > head[0] and self.food[1] < head[1],  # SW
-            self.food[1] < head[1],  # W
-            self.food[0] < head[0] and self.food[1] < head[1],  # NW
-            
-            # Current direction
-            self.direction == (-1, 0),  # N
-            self.direction == (0, 1),   # E
-            self.direction == (1, 0),   # S
-            self.direction == (0, -1),  # W
-            
-            # Length of snake (normalized)
-            len(self.snake) / (self.width * self.height)
-        ]
-        return np.array(state, dtype=float)
+        return state.flatten()
     
     def render(self, screen):
         """New method to render the game state"""
@@ -241,7 +220,7 @@ def visualize_agent(agent, env, speed=5):  # Reduced default speed from 100 to 5
     pygame.quit()
     
 
-def train_model(episodes=10000):
+def train_model(episodes=4000):
     env = SnakeGame()
     state_size = 29  # Updated state size
     action_size = 3
