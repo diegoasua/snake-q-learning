@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import figure
 
 class SnakeGame:
-    def __init__(self, width=10, height=10):
+    def __init__(self, width=20, height=20):
         self.width = width
         self.height = height
         self.reset()
@@ -53,7 +53,7 @@ class SnakeGame:
         )
         
         if game_over:
-            reward = -1 - (len(self.snake) / 2)  # Bigger penalty for dying with longer snake
+            reward = -1 - (len(self.snake) / 4)  # Bigger penalty for dying with longer snake
             return self._get_state(), reward, True
         
         self.snake.appendleft(new_head)
@@ -67,11 +67,11 @@ class SnakeGame:
         if new_head == self.food:
             self.score += 1
             self.steps_without_food = 0
-            reward = 1 + (len(self.snake) * 0.1)  # Bigger reward for eating with longer snake
+            reward = 1 + (len(self.snake) * 0.05)  # Bigger reward for eating with longer snake
             self.place_food()
         else:
             self.snake.pop()
-            reward = distance_reward - 0.01  # Small penalty for each step
+            reward = distance_reward - 0.005  # Small penalty for each step
         
         return self._get_state(), reward, False
     
@@ -150,12 +150,12 @@ class QLearningAgent:
         self.q_table = {}
         self.epsilon = 1.0
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.9995
-        self.learning_rate = 0.2
-        self.learning_rate_decay = 0.9999
+        self.epsilon_decay = 0.9998
+        self.learning_rate = 0.1
+        self.learning_rate_decay = 0.99995
         self.gamma = 0.99
-        self.memory = deque(maxlen=10000)
-        self.batch_size = 32
+        self.memory = deque(maxlen=20000)
+        self.batch_size = 64
     
     def get_state_key(self, state):
         # Discretize continuous values
@@ -317,15 +317,18 @@ if __name__ == "__main__":
         checkpoints = sorted(glob.glob(f"{latest_dir}/checkpoint_*.pkl"))
         
         for checkpoint in checkpoints:
-            print(f"Visualizing {checkpoint}")
+            episode_num = checkpoint.split('_')[-1].split('.')[0]  # Extract episode number
+            pygame.display.set_caption(f'Snake AI - Checkpoint Episode {episode_num}')
+            print(f"\nVisualizing Checkpoint from Episode {episode_num}")
             env = SnakeGame()
             agent = QLearningAgent(29, 3)
             agent.load(checkpoint)
-            visualize_agent(agent, env)  # Using slower default speed
+            visualize_agent(agent, env)
         
         # Visualize the best model
-        print("Visualizing best model")
+        pygame.display.set_caption('Snake AI - Best Model')
+        print("\nVisualizing Best Model")
         env = SnakeGame()
         agent = QLearningAgent(29, 3)
         agent.load(f"{latest_dir}/best_model.pkl")
-        visualize_agent(agent, env)  # Using slower default speed
+        visualize_agent(agent, env)
