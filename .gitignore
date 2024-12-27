@@ -2,3 +2,5 @@ checkpoints*
 *.pkl
 learning_curve.png
 .DS_Store
+*.db
+*.pyc
